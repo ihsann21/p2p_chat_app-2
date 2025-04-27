@@ -1,0 +1,39 @@
+CMP2204 Introduction to Computer Networks
+Spring 2025, Term Project
+Goal: The goal is to apply the concepts learned in class, through programming and hands-on
+practice. At the end of this project, you will have a better understanding of how a networked
+application operates and what are the technologies behind it.
+
+Task: Design and implement a networked peer-to-peer chat application. The shared design
+document (Functional Specification) specifies the necessary protocols that you need to implement. In your application you will need to implement the protocols exactly as specified.
+
+Requirements: The application should;
+1. Have 4 processes: Peer Discovery, Service Announcer, Chat Responder, Chat Initiator.
+These processes should work as outlined in their respective specifications.
+2. Successfully detect all available users in the Local Area Network.
+3. End-user interactions: Display when a user is detected, correctly display users’ online/away presence, allow the end user to choose to display users/exchange numbers
+to generate secret keys/send encrypted message/send unencrypted message.
+4. Successfully chat with any available user in the Local Area Network.
+5. Successfully encrypt/decrypt each peer-to-peer conversation.
+6. Output a chat log, containing timestamps and content of all messages exchanged in a
+chat session.
+
+Important Notes: There will be two demo sessions, one on Week 13 and one on Week 14.
+Those who present in Week 13 will receive 10% bonus. Deadline for the project is 23:59 on
+Saturday, May 3 if you will present on Week 13, and 23:59 on Saturday, May 10 if you will
+present on Week 14. (Late submissions will not be accepted for either cases.) Please
+commit all material under the “Term Project” assignment under Resources on itslearning.
+Your commits should include:
+• All pieces of codes that you wrote.
+• A README file describing how your program works, and known limitations of your
+program (so that I run your code correctly).
+• A 1-page document describing which platform (Windows/Linux) you’ve used to develop
+your code, faced challenges, group members’ names and division of workload within the
+group.
+• Wireshark capture screenshots of one encrypted and one unencrypted message exchange,
+showing you sending a text containing the names of your team members.
+Please name all your files as [XXX] [filename] where XXX is your team name from the ProjectTeams.xlsx on itslearning.
+Please note that only the students who present their work in the demo session
+on weeks 13-14 will get a grade out of their term project.
+
+
