@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import readline  # Kullanıcı girişini koruma için
 from datetime import datetime
 from peer_discovery import PeerDiscovery
 from service_announcer import ServiceAnnouncer
@@ -14,6 +15,7 @@ class ChatApplication:
         print("Initializing application...")
         
         try:
+            # Initialize all processes
             self.peer_discovery = PeerDiscovery()
             self.service_announcer = ServiceAnnouncer()
             self.chat_responder = ChatResponder(self.username)
@@ -28,6 +30,7 @@ class ChatApplication:
         
     def start(self):
         """Start the chat application"""
+        # Start all processes
         print("Starting peer discovery service...")
         self.peer_discovery.start(self.username)
         
@@ -37,6 +40,7 @@ class ChatApplication:
         print("Starting chat responder...")
         self.chat_responder.start()
         
+        # Setup callbacks
         self.peer_discovery.add_peer_callback(self._on_peers_update)
         self.chat_responder.set_message_callback(self._on_message_received)
         
@@ -44,41 +48,54 @@ class ChatApplication:
         self._print_brief_help()
         
         try:
+            # Clear input buffer for clean prompt
+            sys.stdin.flush()
+            
             while True:
-                command = input("\n> ").strip()
+                try:
+                    # readline modülü girilen metni korur
+                    command = input("\n> ").strip()
+                    
+                    # Komut girişi için fazladan yeni satır
+                    print("", end="")
+                    
+                    if command == "":
+                        continue
+                        
+                    if command == "help":
+                        self._print_detailed_help()
+                        
+                    elif command == "list" or command == "users":
+                        self._list_peers()
+                        
+                    elif command.startswith("chat "):
+                        peer = command[5:].strip()
+                        self._start_chat(peer)
+                        
+                    elif command == "history":
+                        self._show_full_history()
+                        
+                    elif command.startswith("log "):
+                        peer = command[4:].strip()
+                        self._show_chat_log(peer)
+                        
+                    elif command == "encrypt":
+                        self._toggle_encryption()
+                        
+                    elif command == "quit":
+                        break
+                        
+                    elif self.current_chat:
+                        self._send_message(command)
+                        
+                    else:
+                        print("Unknown command. Type 'help' for available commands.")
                 
-                if command == "":
+                except KeyboardInterrupt:
+                    # Ctrl+C ile komut girişini iptal et, programı değil
+                    print("\nCommand canceled")
                     continue
-                    
-                if command == "help":
-                    self._print_detailed_help()
-                    
-                elif command == "list" or command == "users":
-                    self._list_peers()
-                    
-                elif command.startswith("chat "):
-                    peer = command[5:].strip()
-                    self._start_chat(peer)
-                    
-                elif command == "history":
-                    self._show_full_history()
-                    
-                elif command.startswith("log "):
-                    peer = command[4:].strip()
-                    self._show_chat_log(peer)
-                    
-                elif command == "encrypt":
-                    self._toggle_encryption()
-                    
-                elif command == "quit":
-                    break
-                    
-                elif self.current_chat:
-                    self._send_message(command)
-                    
-                else:
-                    print("Unknown command. Type 'help' for available commands.")
-                    
+                        
         except KeyboardInterrupt:
             print("\nShutting down application...")
             
@@ -141,6 +158,7 @@ class ChatApplication:
         """Show complete chat history with all users"""
         all_messages = []
         
+        # Collect messages from both responder and initiator
         for peer in set(self.chat_responder.chat_log.keys()) | set(self.chat_initiator.chat_log.keys()):
             responder_log = self.chat_responder.get_chat_log(peer)
             initiator_log = self.chat_initiator.get_chat_log(peer)
@@ -150,6 +168,7 @@ class ChatApplication:
             print("\nNo chat history")
             return
             
+        # Sort by timestamp
         all_messages.sort(key=lambda x: x[0]['timestamp'])
         
         print("\nComplete Chat History:")
@@ -161,9 +180,11 @@ class ChatApplication:
 
     def _show_chat_log(self, peer: str):
         """Show chat history with a specific peer"""
+        # Get chat logs from both responder and initiator
         responder_log = self.chat_responder.get_chat_log(peer)
         initiator_log = self.chat_initiator.get_chat_log(peer)
         
+        # Combine and sort logs by timestamp
         combined_log = responder_log + initiator_log
         combined_log.sort(key=lambda x: x['timestamp'])
         
@@ -181,6 +202,8 @@ class ChatApplication:
     def _list_peers(self):
         """List available peers with their status"""
         peers = self.peer_discovery.get_peers()
+        self.peers = peers
+        
         if not peers:
             print("No peers found")
         else:
@@ -190,16 +213,16 @@ class ChatApplication:
                 
     def _start_chat(self, peer: str):
         """Start chat with peer"""
-        peers = self.peer_discovery.get_peers()
-        if peer not in peers:
+        if peer not in self.peers:
             print(f"Peer {peer} not found")
             return
             
         self.current_chat = peer
-        peer_data = peers[peer]
+        peer_data = self.peers[peer]
         
         print(f"\nStarting chat with {peer}")
         
+        # Ask for secure chat
         secure = input("Do you want secure chat? (yes/no): ").lower().startswith('y')
         if secure:
             print("Initiating secure connection...")
@@ -222,7 +245,7 @@ class ChatApplication:
             print("Start a chat first")
             return
             
-        peer_data = self.peer_discovery.get_peers().get(self.current_chat)
+        peer_data = self.peers.get(self.current_chat)
         if not peer_data:
             print(f"Peer {self.current_chat} is no longer available")
             self.current_chat = None
@@ -246,7 +269,7 @@ class ChatApplication:
             print("Returned to main menu")
             return
             
-        peer_data = self.peer_discovery.get_peers().get(self.current_chat)
+        peer_data = self.peers.get(self.current_chat)
         if not peer_data:
             print(f"Peer {self.current_chat} is no longer available")
             self.current_chat = None
@@ -270,11 +293,13 @@ class ChatApplication:
         """Called when a new message is received"""
         if sender == self.current_chat:
             encryption_status = "[Encrypted] " if encrypted else ""
-            print(f"\r{sender}: {encryption_status}{content}")
-            print("> ", end="", flush=True)
+            # Kullanıcının giriş satırını bozmadan mesajı yazdır
+            sys.stderr.write(f"\r\033[K\n{sender}: {encryption_status}{content}\n> ")
+            sys.stderr.flush()
         else:
-            print(f"\rNew message from {sender}! Type 'chat {sender}' to view.")
-            print("> ", end="", flush=True)
+            # Kullanıcının giriş satırını bozmadan bildirimi yazdır
+            sys.stderr.write(f"\r\033[K\033[1;32m\nNew message from {sender}! Type 'chat {sender}' to view.\033[0m\n> ")
+            sys.stderr.flush()
 
 if __name__ == "__main__":
     app = ChatApplication()

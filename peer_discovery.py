@@ -23,6 +23,10 @@ class PeerDiscovery:
         self.callbacks: list[Callable[[dict], None]] = []
         # Kullanıcı bildirimlerini takip etmek için son görülme zamanları
         self.last_notification: Dict[str, float] = {}
+        # Yeni kullanıcı keşfedildiğinde bildirim vermek için
+        self.new_users = set()
+        # Notification throttling (60 seconds between notifications for the same user)
+        self.notification_threshold = 60
 
     def start(self, username: str):
         self.username = username
@@ -30,6 +34,8 @@ class PeerDiscovery:
         try:
             self.sock.bind(('', self.port))
             threading.Thread(target=self._listen_loop, daemon=True).start()
+            # Sessiz bildirim için ayrı bir thread
+            threading.Thread(target=self._notification_loop, daemon=True).start()
         except Exception as e:
             print(f"Error binding to port {self.port}: {e}")
             self.running = False
@@ -44,6 +50,24 @@ class PeerDiscovery:
     def add_peer_callback(self, cb: Callable[[dict], None]):
         self.callbacks.append(cb)
 
+    def _notification_loop(self):
+        """Kullanıcı yazmaktayken kesintiye uğratmadan bildirimleri gösterir"""
+        while self.running:
+            time.sleep(2)  # Check less frequently (every 2 seconds)
+            if self.new_users:
+                # Eğer sadece bir kullanıcı varsa
+                if len(self.new_users) == 1:
+                    user = self.new_users.pop()
+                    # Statik bir bildirim - promptu etkilemez
+                    sys.stderr.write(f"\r\033[K\033[33m[BILDIRIM] {user} çevrimiçi oldu\033[0m\n> ")
+                    sys.stderr.flush()
+                else:
+                    # Birden çok kullanıcı varsa hepsini bir bildirimde göster
+                    users = ", ".join(self.new_users)
+                    self.new_users.clear()
+                    sys.stderr.write(f"\r\033[K\033[33m[BILDIRIM] Şu kullanıcılar çevrimiçi oldu: {users}\033[0m\n> ")
+                    sys.stderr.flush()
+
     def _listen_loop(self):
         while self.running:
             try:
@@ -54,14 +78,14 @@ class PeerDiscovery:
                 
                 now = time.time()
                 if name and name != self.username:
-                    # İlk kez kullanıcı keşfedildiğinde veya uzun süre (en az 60 saniye) sonra tekrar görüldüğünde bildirim yap
+                    # Yeni kullanıcı mı?
                     is_new_user = name not in self.peers
-                    is_returning_user = name in self.last_notification and (now - self.last_notification[name]) > 60
+                    # Eski kullanıcı ama uzun süre sonra tekrar mı görüldü?
+                    is_returning_user = name in self.last_notification and (now - self.last_notification[name]) > self.notification_threshold
                     
                     if is_new_user or is_returning_user:
-                        # Sadece yeni veya uzun süre sonra tekrar görülen kullanıcıları bildir
-                        print(f"\n{name} is online")
-                        print("> ", end="", flush=True)
+                        # Bildirim threadi için yeni kullanıcı ekle
+                        self.new_users.add(name)
                         self.last_notification[name] = now
                     
                     # update record
@@ -81,8 +105,9 @@ class PeerDiscovery:
             except json.JSONDecodeError:
                 continue
             except Exception as e:
-                print(f"\rError in listener loop: {e}", end="", flush=True)
-                print("\n> ", end="", flush=True)
+                # Hata mesajları kullanıcının yazısını bozmamalı
+                sys.stderr.write(f"\r\033[K\033[31m[HATA] Dinleme döngüsünde hata: {e}\033[0m\n> ")
+                sys.stderr.flush()
                 continue
 
     def get_peers(self) -> dict:
