@@ -2,12 +2,39 @@ import tkinter as tk
 from tkinter import ttk, scrolledtext, simpledialog, messagebox
 import threading
 import time
+import sys
+import io
 from datetime import datetime
 
 from peer_discovery import PeerDiscovery
 from service_announcer import ServiceAnnouncer
 from chat_responder import ChatResponder
 from chat_initiator import ChatInitiator
+
+class StdoutRedirector(io.StringIO):
+    def __init__(self, text_widget):
+        super().__init__()
+        self.text_widget = text_widget
+        self.original_stdout = sys.stdout
+        self.original_stderr = sys.stderr
+        
+    def write(self, string):
+        self.original_stdout.write(string)
+        self.text_widget.config(state='normal')
+        self.text_widget.insert(tk.END, string)
+        self.text_widget.see(tk.END)
+        self.text_widget.config(state='disabled')
+        
+    def flush(self):
+        self.original_stdout.flush()
+
+class StderrRedirector(StdoutRedirector):
+    def write(self, string):
+        self.original_stderr.write(string)
+        self.text_widget.config(state='normal')
+        self.text_widget.insert(tk.END, string, "error")
+        self.text_widget.see(tk.END)
+        self.text_widget.config(state='disabled')
 
 class ChatAppGUI:
     def __init__(self, root):
@@ -31,16 +58,20 @@ class ChatAppGUI:
         self.main_tab = ttk.Frame(self.notebook)
         self.chat_tab = ttk.Frame(self.notebook)
         self.history_tab = ttk.Frame(self.notebook)
+        self.network_log_tab = ttk.Frame(self.notebook)
         
         self.notebook.add(self.main_tab, text="Users")
         self.notebook.add(self.chat_tab, text="Chat")
         self.notebook.add(self.history_tab, text="History")
+        self.notebook.add(self.network_log_tab, text="Network Log")
         
         self.setup_users_tab()
         
         self.setup_chat_tab()
         
         self.setup_history_tab()
+        
+        self.setup_network_log_tab()
         
         self.status_var = tk.StringVar()
         self.status_var.set("Welcome to P2P Chat")
@@ -135,7 +166,26 @@ class ChatAppGUI:
         self.history_display = scrolledtext.ScrolledText(history_frame, state='disabled', wrap=tk.WORD)
         self.history_display.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
     
+    def setup_network_log_tab(self):
+        log_frame = ttk.LabelFrame(self.network_log_tab, text="Network Activity Log")
+        log_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        self.network_log = scrolledtext.ScrolledText(log_frame, state='disabled', wrap=tk.WORD)
+        self.network_log.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.network_log.tag_configure("error", foreground="red")
+        
+        button_frame = ttk.Frame(self.network_log_tab)
+        button_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        clear_btn = ttk.Button(button_frame, text="Clear Log", command=self.clear_network_log)
+        clear_btn.pack(side=tk.LEFT, padx=5)
+    
     def init_application(self):
+        # Redirect stdout and stderr to the network log
+        self.stdout_redirector = StdoutRedirector(self.network_log)
+        self.stderr_redirector = StderrRedirector(self.network_log)
+        sys.stdout = self.stdout_redirector
+        sys.stderr = self.stderr_redirector
         
         self.username = simpledialog.askstring("Username", "Enter your username:", parent=self.root)
         if not self.username:
@@ -147,13 +197,13 @@ class ChatAppGUI:
         self.root.update()
         
         try:
-           
+            # Initialize components
             self.peer_discovery = PeerDiscovery()
             self.service_announcer = ServiceAnnouncer()
             self.chat_responder = ChatResponder(self.username)
             self.chat_initiator = ChatInitiator(self.username)
             
-    
+            # Start services
             self.status_var.set("Starting peer discovery service...")
             self.root.update()
             self.peer_discovery.start(self.username)
@@ -166,13 +216,13 @@ class ChatAppGUI:
             self.root.update()
             self.chat_responder.start()
             
-       
+            # Register callbacks
             self.peer_discovery.add_peer_callback(self.on_peers_update)
             self.chat_responder.set_message_callback(self.on_message_received)
             
             self.status_var.set(f"Welcome {self.username}! Ready to chat.")
             
-           
+            # Start UI update loop
             self.update_ui()
             
         except Exception as e:
@@ -397,10 +447,19 @@ class ChatAppGUI:
             self.status_var.set(f"New message from {sender}! Go to Users tab to start chat.")
             messagebox.showinfo("New Message", f"New message from {sender}!")
     
+    def clear_network_log(self):
+        self.network_log.config(state='normal')
+        self.network_log.delete(1.0, tk.END)
+        self.network_log.config(state='disabled')
+    
     def on_closing(self):
         """Handle window close event"""
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
             try:
+                # Restore original stdout and stderr
+                sys.stdout = self.stdout_redirector.original_stdout
+                sys.stderr = self.stderr_redirector.original_stderr
+                
                 self.peer_discovery.stop()
                 self.service_announcer.stop()
                 self.chat_responder.stop()

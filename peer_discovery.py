@@ -26,7 +26,7 @@ class PeerDiscovery:
         # Yeni kullanıcı keşfedildiğinde bildirim vermek için
         self.new_users = set()
         # Notification throttling (60 seconds between notifications for the same user)
-        self.notification_threshold = 60
+        self.notification_threshold = 8
 
     def start(self, username: str):
         self.username = username
@@ -59,13 +59,13 @@ class PeerDiscovery:
                 if len(self.new_users) == 1:
                     user = self.new_users.pop()
                     # Statik bir bildirim - promptu etkilemez
-                    sys.stderr.write(f"\r\033[K\033[33m[BILDIRIM] {user} çevrimiçi oldu\033[0m\n> ")
+                    sys.stderr.write(f"\r\033[K\033[33m[BILDIRIM] {user} çevrimiçi oldu\033[0m")
                     sys.stderr.flush()
                 else:
                     # Birden çok kullanıcı varsa hepsini bir bildirimde göster
                     users = ", ".join(self.new_users)
                     self.new_users.clear()
-                    sys.stderr.write(f"\r\033[K\033[33m[BILDIRIM] Şu kullanıcılar çevrimiçi oldu: {users}\033[0m\n> ")
+                    sys.stderr.write(f"\r\033[K\033[33m[BILDIRIM] Şu kullanıcılar çevrimiçi oldu: {users}\033[0m")
                     sys.stderr.flush()
 
     def _listen_loop(self):
@@ -106,7 +106,7 @@ class PeerDiscovery:
                 continue
             except Exception as e:
                 # Hata mesajları kullanıcının yazısını bozmamalı
-                sys.stderr.write(f"\r\033[K\033[31m[HATA] Dinleme döngüsünde hata: {e}\033[0m\n> ")
+                sys.stderr.write(f"\r\033[K\033[31m[HATA] Dinleme döngüsünde hata: {e}\033[0m")
                 sys.stderr.flush()
                 continue
 
