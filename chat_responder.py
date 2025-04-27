@@ -3,6 +3,7 @@ import json
 import threading
 import base64
 import hashlib
+import sys
 from datetime import datetime
 from cryptography.fernet import Fernet
 
@@ -33,6 +34,7 @@ class ChatResponder:
         self.server_socket.bind(('', self.port))
         self.server_socket.listen(5)
         threading.Thread(target=self._accept_loop, daemon=True).start()
+        sys.stderr.write(f"Chat responder service started on port {self.port}\n")
 
     def stop(self):
         self.running = False
@@ -49,6 +51,7 @@ class ChatResponder:
         while self.running:
             try:
                 client, addr = self.server_socket.accept()
+                sys.stderr.write(f"Incoming connection from {addr[0]}\n")
                 threading.Thread(target=self._handle_client, args=(client, addr), daemon=True).start()
             except:
                 continue
@@ -68,6 +71,7 @@ class ChatResponder:
                 fkey = base64.urlsafe_b64encode(raw_secret)
                 self.dh_keys[ip] = Fernet(fkey)
                 client.send(json.dumps({'key': str(my_pub)}).encode())
+                sys.stderr.write(f"Key exchange with {ip} completed\n")
 
             elif 'encrypted_message' in msg:
                 sender = msg.get('username', 'Unknown')
@@ -77,8 +81,10 @@ class ChatResponder:
                     # Base64 kodunu çöz ve şifreli mesajı çöz
                     encrypted_bytes = base64.b64decode(base64_token)
                     content = self.dh_keys[ip].decrypt(encrypted_bytes).decode()
+                    sys.stderr.write(f"Received encrypted message from {sender} ({ip})\n")
                 except Exception as e:
-                    print(f"Decryption failed: {e}")
+                    # Log error to Network Log tab
+                    sys.stderr.write(f"Decryption failed from {sender} ({ip}): {e}\n")
                     content = '[Decryption failed]'
                 self._log_message(sender, content, False, True, ts)
                 
@@ -89,13 +95,15 @@ class ChatResponder:
                 sender = msg.get('username', 'Unknown')
                 self.ip_to_name[ip] = sender  
                 content = msg['unencrypted_message']
+                sys.stderr.write(f"Received unencrypted message from {sender} ({ip})\n")
                 self._log_message(sender, content, False, False, ts)
                 
                 if self.message_callback:
                     self.message_callback(sender, content, False)
 
         except Exception as e:
-            print(f"Error handling client: {e}")
+            # Log error to Network Log tab
+            sys.stderr.write(f"Error handling client {addr[0]}: {e}\n")
         finally:
             client.close()
 

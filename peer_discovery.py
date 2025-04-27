@@ -18,7 +18,8 @@ class PeerDiscovery:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         except Exception as e:
-            print(f"Error creating UDP socket: {e}")
+            # Log to Network Log tab
+            sys.stderr.write(f"Error creating UDP socket: {e}\n")
             sys.exit(1)
         self.callbacks: list[Callable[[dict], None]] = []
         # Kullanıcı bildirimlerini takip etmek için son görülme zamanları
@@ -36,8 +37,10 @@ class PeerDiscovery:
             threading.Thread(target=self._listen_loop, daemon=True).start()
             # Sessiz bildirim için ayrı bir thread
             threading.Thread(target=self._notification_loop, daemon=True).start()
+            sys.stderr.write(f"Peer discovery service started for {username}\n")
         except Exception as e:
-            print(f"Error binding to port {self.port}: {e}")
+            # Log to Network Log tab
+            sys.stderr.write(f"Error binding to port {self.port}: {e}\n")
             self.running = False
 
     def stop(self):
@@ -45,7 +48,8 @@ class PeerDiscovery:
         try:
             self.sock.close()
         except Exception as e:
-            print(f"Error closing socket: {e}")
+            # Log to Network Log tab
+            sys.stderr.write(f"Error closing socket: {e}\n")
 
     def add_peer_callback(self, cb: Callable[[dict], None]):
         self.callbacks.append(cb)
@@ -55,18 +59,8 @@ class PeerDiscovery:
         while self.running:
             time.sleep(2)  # Check less frequently (every 2 seconds)
             if self.new_users:
-                # Eğer sadece bir kullanıcı varsa
-                if len(self.new_users) == 1:
-                    user = self.new_users.pop()
-                    # Statik bir bildirim - promptu etkilemez
-                    sys.stderr.write(f"\r\033[BILDIRIM] {user} çevrimiçi oldu\033")
-                    sys.stderr.flush()
-                else:
-                    # Birden çok kullanıcı varsa hepsini bir bildirimde göster
-                    users = ", ".join(self.new_users)
-                    self.new_users.clear()
-                    sys.stderr.write(f"\r\033[BILDIRIM] Şu kullanıcılar çevrimiçi oldu: {users}\033")
-                    sys.stderr.flush()
+                # Clear new users without logging - service announcer will handle that
+                self.new_users.clear()
 
     def _listen_loop(self):
         while self.running:
@@ -105,9 +99,8 @@ class PeerDiscovery:
             except json.JSONDecodeError:
                 continue
             except Exception as e:
-                # Hata mesajları kullanıcının yazısını bozmamalı
-                sys.stderr.write(f"\r\033[HATA] Dinleme döngüsünde hata: {e}\033")
-                sys.stderr.flush()
+                # Log to Network Log tab
+                sys.stderr.write(f"[HATA] Dinleme döngüsünde hata: {e}\n")
                 continue
 
     def get_peers(self) -> dict:

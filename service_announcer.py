@@ -4,6 +4,7 @@ import threading
 import time
 import ipaddress
 import netifaces
+import sys
 
 class ServiceAnnouncer:
     """
@@ -16,6 +17,7 @@ class ServiceAnnouncer:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         self.running = False
+        self.broadcast_interval = 8  # Fixed interval of 8 seconds
 
     def start(self, username: str):
         self.username = username
@@ -31,9 +33,17 @@ class ServiceAnnouncer:
 
     def _broadcast_loop(self):
         while self.running:
+            start_time = time.time()
             message = {"username": self.username}
             try:
                 self.sock.sendto(json.dumps(message).encode(), (self.broadcast_ip, self.port))
+                # Log this to Network Log tab only (not terminal)
+                sys.stderr.write(f"{self.username} çevrimiçi oldu\n")
             except Exception as e:
-                print(f"Error broadcasting presence: {e}")
-            time.sleep(8)
+                # Log errors to Network Log tab only (not terminal)
+                sys.stderr.write(f"Error broadcasting presence: {e}\n")
+            
+            # Calculate precise sleep time to maintain exact 8-second intervals
+            elapsed = time.time() - start_time
+            sleep_time = max(0, self.broadcast_interval - elapsed)
+            time.sleep(sleep_time)

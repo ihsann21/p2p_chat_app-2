@@ -1,6 +1,7 @@
 import socket
 import json
 import base64
+import sys
 from datetime import datetime
 import hashlib
 from cryptography.fernet import Fernet
@@ -21,6 +22,7 @@ class ChatInitiator:
         """
         Perform Diffie-Hellman key exchange with peer at peer_ip.
         """
+        sys.stderr.write(f"Initiating secure chat with {peer_ip}...\n")
         try:
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client.connect((peer_ip, self.port))
@@ -37,9 +39,11 @@ class ChatInitiator:
                 raw_secret = hashlib.sha256(str(shared).encode()).digest()
                 fkey = base64.urlsafe_b64encode(raw_secret)
                 self.dh_keys[peer_ip] = Fernet(fkey)
+                sys.stderr.write(f"Secure chat established with {peer_ip}\n")
                 return True
         except Exception as e:
-            print(f"Error during key exchange: {e}")
+            # Log error to Network Log tab
+            sys.stderr.write(f"Error during key exchange with {peer_ip}: {e}\n")
         finally:
             try:
                 client.close()
@@ -53,6 +57,8 @@ class ChatInitiator:
         Appends to in-memory and file log.
         """
         ts = datetime.now().isoformat()
+        encryption_status = "encrypted" if encrypted else "unencrypted"
+        sys.stderr.write(f"Sending {encryption_status} message to {peer_name} ({peer_ip})\n")
         
         self.name_to_ip[peer_name] = peer_ip
         self.ip_to_name[peer_ip] = peer_name
@@ -70,6 +76,7 @@ class ChatInitiator:
 
             client.send(json.dumps(payload).encode())
             client.close()
+            sys.stderr.write(f"Message sent successfully to {peer_name}\n")
 
             self.chat_log.setdefault(peer_name, []).append({
                 'sent': True,
@@ -80,7 +87,8 @@ class ChatInitiator:
             with open('chat_history.log', 'a') as f:
                 f.write(f"{ts},{self.username},{peer_name},{peer_ip},SENT,{encrypted},{message}\n")
         except Exception as e:
-            print(f"Error sending message: {e}")
+            # Log error to Network Log tab
+            sys.stderr.write(f"Error sending message to {peer_name} ({peer_ip}): {e}\n")
 
     def get_chat_log(self, peer_name: str):
         """Get chat log for a specific peer by name"""
