@@ -37,8 +37,8 @@ class ServiceAnnouncer:
             message = {"username": self.username}
             try:
                 self.sock.sendto(json.dumps(message).encode(), (self.broadcast_ip, self.port))
-                # Log this to Network Log tab only (not terminal)
-                sys.stderr.write(f"{self.username} çevrimiçi oldu\n")
+                # Don't log our own broadcasts - they're confusing the user
+                # Only peer_discovery will log OTHER users coming online
             except Exception as e:
                 # Log errors to Network Log tab only (not terminal)
                 sys.stderr.write(f"Error broadcasting presence: {e}\n")

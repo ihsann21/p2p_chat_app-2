@@ -59,8 +59,14 @@ class PeerDiscovery:
         while self.running:
             time.sleep(2)  # Check less frequently (every 2 seconds)
             if self.new_users:
-                # Clear new users without logging - service announcer will handle that
-                self.new_users.clear()
+                # Show notification for other users coming online
+                if len(self.new_users) == 1:
+                    user = self.new_users.pop()
+                    sys.stderr.write(f"{user} çevrimiçi oldu\n")
+                else:
+                    users = ", ".join(self.new_users)
+                    self.new_users.clear()
+                    sys.stderr.write(f"Şu kullanıcılar çevrimiçi oldu: {users}\n")
 
     def _listen_loop(self):
         while self.running:
