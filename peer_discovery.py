@@ -59,13 +59,13 @@ class PeerDiscovery:
                 if len(self.new_users) == 1:
                     user = self.new_users.pop()
                     # Statik bir bildirim - promptu etkilemez
-                    sys.stderr.write(f"\r\033[K\033[33m[BILDIRIM] {user} çevrimiçi oldu\033[0m")
+                    sys.stderr.write(f"\r\033[BILDIRIM] {user} çevrimiçi oldu\033")
                     sys.stderr.flush()
                 else:
                     # Birden çok kullanıcı varsa hepsini bir bildirimde göster
                     users = ", ".join(self.new_users)
                     self.new_users.clear()
-                    sys.stderr.write(f"\r\033[K\033[33m[BILDIRIM] Şu kullanıcılar çevrimiçi oldu: {users}\033[0m")
+                    sys.stderr.write(f"\r\033[BILDIRIM] Şu kullanıcılar çevrimiçi oldu: {users}\033")
                     sys.stderr.flush()
 
     def _listen_loop(self):
@@ -81,7 +81,7 @@ class PeerDiscovery:
                     # Yeni kullanıcı mı?
                     is_new_user = name not in self.peers
                     # Eski kullanıcı ama uzun süre sonra tekrar mı görüldü?
-                    is_returning_user = name in self.last_notification and (now - self.last_notification[name]) > self.notification_threshold
+                    is_returning_user = name in self.last_notification and (now - self.last_notification[name]) >= self.notification_threshold
                     
                     if is_new_user or is_returning_user:
                         # Bildirim threadi için yeni kullanıcı ekle
@@ -106,7 +106,7 @@ class PeerDiscovery:
                 continue
             except Exception as e:
                 # Hata mesajları kullanıcının yazısını bozmamalı
-                sys.stderr.write(f"\r\033[K\033[31m[HATA] Dinleme döngüsünde hata: {e}\033[0m")
+                sys.stderr.write(f"\r\033[HATA] Dinleme döngüsünde hata: {e}\033")
                 sys.stderr.flush()
                 continue
 
