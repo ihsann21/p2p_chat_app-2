@@ -26,8 +26,8 @@ class PeerDiscovery:
         self.last_notification: Dict[str, float] = {}
         # Yeni kullanıcı keşfedildiğinde bildirim vermek için
         self.new_users = set()
-        # Notification throttling (60 seconds between notifications for the same user)
-        self.notification_threshold = 8
+        # Set threshold to 4 seconds to ensure we catch every 8-second broadcast
+        self.notification_threshold = 4  # Reduced from 8 to ensure we catch every broadcast
 
     def start(self, username: str):
         self.username = username
@@ -57,7 +57,7 @@ class PeerDiscovery:
     def _notification_loop(self):
         """Kullanıcı yazmaktayken kesintiye uğratmadan bildirimleri gösterir"""
         while self.running:
-            time.sleep(2)  # Check less frequently (every 2 seconds)
+            time.sleep(1)  # Check more frequently (every 1 second)
             if self.new_users:
                 # Show notification for other users coming online
                 if len(self.new_users) == 1:
@@ -78,15 +78,10 @@ class PeerDiscovery:
                 
                 now = time.time()
                 if name and name != self.username:
-                    # Yeni kullanıcı mı?
-                    is_new_user = name not in self.peers
-                    # Eski kullanıcı ama uzun süre sonra tekrar mı görüldü?
-                    is_returning_user = name in self.last_notification and (now - self.last_notification[name]) >= self.notification_threshold
-                    
-                    if is_new_user or is_returning_user:
-                        # Bildirim threadi için yeni kullanıcı ekle
-                        self.new_users.add(name)
-                        self.last_notification[name] = now
+                    # Always treat each message as if it needs a notification
+                    # This ensures we get notifications for every broadcast (8 seconds)
+                    self.new_users.add(name)
+                    self.last_notification[name] = now
                     
                     # update record
                     self.peers[name] = {'ip': ip, 'last_seen': now}
