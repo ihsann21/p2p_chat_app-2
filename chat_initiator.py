@@ -26,16 +26,13 @@ class ChatInitiator:
             client.connect((peer_ip, self.port))
 
             my_pub = pow(self.g, self.private_key, self.p)
-            print(f"[Initiator DEBUG] Sending public key: {my_pub}")
             client.send(json.dumps({"key": str(my_pub)}).encode())
 
             raw = client.recv(4096)
-            print(f"[Initiator DEBUG] Raw response: {raw!r}")
             resp = json.loads(raw.decode())
 
             if "key" in resp:
                 peer_pub = int(resp["key"])
-                print(f"[Initiator DEBUG] Received peer public key: {peer_pub}")
                 shared = pow(peer_pub, self.private_key, self.p)
                 raw_secret = hashlib.sha256(str(shared).encode()).digest()
                 fkey = base64.urlsafe_b64encode(raw_secret)

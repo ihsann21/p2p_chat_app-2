@@ -57,13 +57,11 @@ class ChatResponder:
         ts = datetime.now().isoformat()
         try:
             data = client.recv(4096)
-            print(f"[Responder DEBUG] Received raw: {data!r} from {addr}")
             msg = json.loads(data.decode())
             ip = addr[0]
 
             if 'key' in msg:
                 peer_pub = int(msg['key'])
-                print(f"[Responder DEBUG] DH request from {ip}, peer_pub={peer_pub}")
                 my_pub = pow(self.g, self.private_key, self.p)
                 shared = pow(peer_pub, self.private_key, self.p)
                 raw_secret = hashlib.sha256(str(shared).encode()).digest()

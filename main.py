@@ -1,4 +1,3 @@
-# main.py
 import os
 import sys
 import time
@@ -15,7 +14,6 @@ class ChatApplication:
         print("Initializing application...")
         
         try:
-            # Initialize all processes
             self.peer_discovery = PeerDiscovery()
             self.service_announcer = ServiceAnnouncer()
             self.chat_responder = ChatResponder(self.username)
@@ -30,7 +28,6 @@ class ChatApplication:
         
     def start(self):
         """Start the chat application"""
-        # Start all processes
         print("Starting peer discovery service...")
         self.peer_discovery.start(self.username)
         
@@ -40,7 +37,6 @@ class ChatApplication:
         print("Starting chat responder...")
         self.chat_responder.start()
         
-        # Setup callbacks
         self.peer_discovery.add_peer_callback(self._on_peers_update)
         self.chat_responder.set_message_callback(self._on_message_received)
         
@@ -145,7 +141,6 @@ class ChatApplication:
         """Show complete chat history with all users"""
         all_messages = []
         
-        # Collect messages from both responder and initiator
         for peer in set(self.chat_responder.chat_log.keys()) | set(self.chat_initiator.chat_log.keys()):
             responder_log = self.chat_responder.get_chat_log(peer)
             initiator_log = self.chat_initiator.get_chat_log(peer)
@@ -155,7 +150,6 @@ class ChatApplication:
             print("\nNo chat history")
             return
             
-        # Sort by timestamp
         all_messages.sort(key=lambda x: x[0]['timestamp'])
         
         print("\nComplete Chat History:")
@@ -167,11 +161,9 @@ class ChatApplication:
 
     def _show_chat_log(self, peer: str):
         """Show chat history with a specific peer"""
-        # Get chat logs from both responder and initiator
         responder_log = self.chat_responder.get_chat_log(peer)
         initiator_log = self.chat_initiator.get_chat_log(peer)
         
-        # Combine and sort logs by timestamp
         combined_log = responder_log + initiator_log
         combined_log.sort(key=lambda x: x['timestamp'])
         
@@ -208,7 +200,6 @@ class ChatApplication:
         
         print(f"\nStarting chat with {peer}")
         
-        # Ask for secure chat
         secure = input("Do you want secure chat? (yes/no): ").lower().startswith('y')
         if secure:
             print("Initiating secure connection...")
